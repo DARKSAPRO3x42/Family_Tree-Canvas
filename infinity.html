@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family_Tree Canvas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #181f2a;
+            overflow: hidden;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            background: repeating-linear-gradient(0deg, #232b3a 0px, #232b3a 1px, transparent 1px, transparent 32px),
+                        repeating-linear-gradient(90deg, #232b3a 0px, #232b3a 1px, transparent 1px, transparent 32px);
+            cursor: default;
+        }
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #232b3a;
+            padding: 8px 16px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .menu-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 0 8px;
+            border-right: 1px solid #3ec6ff20;
+        }
+        .menu-group:last-child {
+            border-right: none;
+        }
+        .menu-button {
+            background: linear-gradient(135deg, #3ec6ff, #2ee59d);
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.5px;
+        }
+        .menu-button:hover {
+            background: linear-gradient(135deg, #2ee59d, #3ec6ff);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        .menu-button:active {
+            transform: translateY(0);
+        }
+        .menu-button .icon {
+            font-size: 16px;
+        }
+        .menu-button.delete {
+            color: #ff6b6b;
+        }
+        .menu-button.delete:hover {
+            background: #ff6b6b20;
+        }
+        .menu-button.undo {
+            color: #2ee59d;
+        }
+        .menu-button.undo:hover {
+            background: #2ee59d20;
+        }
+        .menu-button.redo {
+            color: #2ee59d;
+        }
+        .menu-button.redo:hover {
+            background: #2ee59d20;
+        }
+        .menu-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .menu-button:disabled:hover {
+            background: none;
+        }
+        .menu-title {
+            color: #fff;
+            font-weight: 800;
+            font-size: 16px;
+            margin-right: 8px;
+        }
+        .shortcut {
+            color: #666;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+        }
+        .zoom-button {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            background: #232b3a;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .zoom-button:hover {
+            background: #3ec6ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(62, 198, 255, 0.3);
+        }
+        .zoom-button:active {
+            transform: translateY(0);
+        }
+        .zoom-button.reset {
+            font-size: 16px;
+            background: #ff6b6b;
+        }
+        .zoom-button.reset:hover {
+            background: #ff5252;
+        }
+        .coordinate-display {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: #232b3a;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .coordinate-display .label {
+            color: #3ec6ff;
+            font-weight: 600;
+        }
+        .coordinate-display .value {
+            font-family: 'Consolas', monospace;
+            background: #181f2a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: right;
+        }
+        .coordinate-display .scale {
+            color: #2ee59d;
+        }
+        .menu-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .menu-dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: linear-gradient(135deg, #232b3a, #181f2a);
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            z-index: 1001;
+        }
+        .menu-dropdown:hover .menu-dropdown-content {
+            display: block;
+        }
+        .menu-dropdown-item {
+            color: #fff;
+            padding: 10px 20px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .menu-dropdown-item:hover {
+            background: rgba(62, 198, 255, 0.2);
+            transform: translateX(5px);
+        }
+        .menu-dropdown-separator {
+            height: 1px;
+            background: rgba(62, 198, 255, 0.2);
+            margin: 8px 0;
+        }
+        .menu-dropdown-item .shortcut {
+            margin-left: auto;
+            color: #666;
+            font-size: 12px;
+        }
+        .search-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 10px;
+        }
+
+        .search-input {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 200px;
+            background: white;
+        }
+
+        .filter-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .filter-section {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .filter-section:last-child {
+            border-bottom: none;
+        }
+
+        .filter-section label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .filter-section select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-button {
+            width: 100%;
+            padding: 5px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .filter-button:hover {
+            background: #e0e0e0;
+        }
+
+        .node.highlight {
+            box-shadow: 0 0 0 3px #ff0;
+        }
+
+        .node.highlight .node-content {
+            background: #fff3cd;
+        }
+
+        /* Remove minimap styles */
+        #minimap, #minimapCanvas, #viewportIndicator {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-bar">
+        <div class="menu-group">
+            <div class="menu-dropdown">
+                <button class="menu-button" id="fileMenu">
+                    <span class="icon">📁</span>File
+                </button>
+                <div class="menu-dropdown-content">
+                    <div class="menu-dropdown-item" id="exportJPG">
+                        <span class="icon">🖼️</span>Save as JPG
+                        <span class="shortcut">Ctrl+S</span>
+                    </div>
+                    <div class="menu-dropdown-item" id="exportPDF">
+                        <span class="icon">📄</span>Save as PDF
+                        <span class="shortcut">Ctrl+P</span>
+                    </div>
+                    <div class="menu-dropdown-separator"></div>
+                    <div class="menu-dropdown-item" id="exportJSON">
+                        <span class="icon">📋</span>Save as JSON
+                        <span class="shortcut">Ctrl+Q</span>
+                    </div>
+                    <div class="menu-dropdown-separator"></div>
+                    <div class="menu-dropdown-item" id="loadTree">
+                        <span class="icon">📂</span>Load
+                        <span class="shortcut">Ctrl+O</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="menu-group">
+            <div class="menu-dropdown">
+                <button class="menu-button" id="editMenu">
+                    <span class="icon">✏️</span>Edit
+                </button>
+                <div class="menu-dropdown-content">
+                    <div class="menu-dropdown-item" id="createNodeBtn">
+                        <span class="icon">➕</span>Create Node
+                    </div>
+                    <div class="menu-dropdown-separator"></div>
+                    <div class="menu-dropdown-item" id="undoBtn">
+                        <span class="icon">↶</span>Undo
+                        <span class="shortcut">Ctrl+Z</span>
+                    </div>
+                    <div class="menu-dropdown-item" id="redoBtn">
+                        <span class="icon">↷</span>Redo
+                        <span class="shortcut">Ctrl+Y</span>
+                    </div>
+                    <div class="menu-dropdown-item" id="deleteBtn">
+                        <span class="icon">🗑️</span>Delete
+                        <span class="shortcut">Del</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="menu-group">
+            <div class="menu-dropdown">
+                <button class="menu-button" id="viewMenu">
+                    <span class="icon">👁️</span>View
+                </button>
+                <div class="menu-dropdown-content">
+                    <div class="menu-dropdown-item" id="zoomInBtn">
+                        <span class="icon">🔍+</span>Zoom In
+                        <span class="shortcut">Ctrl++</span>
+                    </div>
+                    <div class="menu-dropdown-item" id="zoomOutBtn">
+                        <span class="icon">🔍-</span>Zoom Out
+                        <span class="shortcut">Ctrl+-</span>
+                    </div>
+                    <div class="menu-dropdown-item" id="resetViewBtn">
+                        <span class="icon">↺</span>Reset View
+                        <span class="shortcut">Ctrl+0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div class="zoom-controls">
+        <button class="zoom-button" id="zoomIn">+</button>
+        <button class="zoom-button" id="zoomOut">-</button>
+        <button class="zoom-button reset" id="resetZoom">↺</button>
+    </div>
+    <div class="coordinate-display">
+        <div>
+            <span class="label">X:</span>
+            <span class="value" id="coordX">0</span>
+        </div>
+        <div>
+            <span class="label">Y:</span>
+            <span class="value" id="coordY">0</span>
+        </div>
+        <div class="scale">
+            <span class="label">Zoom:</span>
+            <span class="value" id="zoomLevel">100%</span>
+        </div>
+    </div>
+    <div id="contextMenu" class="context-menu">
+        <div class="context-menu-item" id="editNodeBtn">
+            <span class="icon">✏️</span>Edit
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="connectNodeBtn">
+            <span class="icon">🔗</span>Connect
+        </div>
+    </div>
+    <div id="minimap" style="display: none;">
+        <canvas id="minimapCanvas"></canvas>
+        <div id="viewportIndicator"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Add zoom and pan variables
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // Convert screen coordinates to world coordinates
+        function screenToWorld(screenX, screenY) {
+            return {
+                x: (screenX - offsetX) / scale,
+                y: (screenY - offsetY) / scale
+            };
+        }
+
+        // Convert world coordinates to screen coordinates
+        function worldToScreen(worldX, worldY) {
+            return {
+                x: worldX * scale + offsetX,
+                y: worldY * scale + offsetY
+            };
+        }
+
+        // Handle mouse wheel zoom
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            // Get mouse position in world coordinates before zoom
+            const worldBefore = screenToWorld(mouseX, mouseY);
+            
+            // Update scale
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= zoomFactor;
+            
+            // Clamp scale between 0.1 and 5
+            scale = Math.max(0.1, Math.min(5, scale));
+            
+            // Get mouse position in world coordinates after zoom
+            const worldAfter = screenToWorld(mouseX, mouseY);
+            
+            // Adjust offset to keep mouse position fixed
+            offsetX += (worldAfter.x - worldBefore.x) * scale;
+            offsetY += (worldAfter.y - worldBefore.y) * scale;
+            
+            // Update zoom percentage display
+            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+            
+            draw();
+        });
+
+        // Handle canvas panning
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1 || (e.button === 0 && e.altKey)) { // Middle mouse or Alt+Left click
+                isDragging = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                offsetX += deltaX;
+                offsetY += deltaY;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 1 || (e.button === 0 && e.altKey)) {
+                isDragging = false;
+                canvas.style.cursor = 'default';
+            }
+        });
+
+        // Node and connection data
+        let nodes = [];
+        const nodeWidth = 260;
+        const nodeHeight = 64;
+        let selectedNode = null;
+        let hoveredNode = null;
+        let draggingNode = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let connectingNode = null;
+        let mouseScreenX = 0;
+        let mouseScreenY = 0;
+        const NODE_TYPES = [
+            { type: 'Male', color: '#4a90e2' },
+            { type: 'Female', color: '#e94a86' },
+            { type: 'Other', color: '#2ee59d' }
+        ];
+
+        // Overlap prevention settings
+        const MIN_NODE_DIST = 180; // Minimum distance between node centers
+        function isOverlapping(x, y, ignoreNode = null) {
+            for (const node of nodes) {
+                if (node === ignoreNode) continue;
+                
+                // Calculate the actual distance between node centers
+                const dx = node.x - x;
+                const dy = node.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                // If nodes are too close horizontally, check vertical overlap
+                if (Math.abs(dx) < nodeWidth) {
+                    // Check if vertical distance is less than node height
+                    if (Math.abs(dy) < nodeHeight) {
+                        return true;
+                    }
+                }
+                
+                // If nodes are too close vertically, check horizontal overlap
+                if (Math.abs(dy) < nodeHeight) {
+                    // Check if horizontal distance is less than node width
+                    if (Math.abs(dx) < nodeWidth) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Undo/Redo stacks
+        let undoStack = [];
+        let redoStack = [];
+        function pushUndo() {
+            undoStack.push(JSON.stringify(nodes));
+            if (undoStack.length > 100) undoStack.shift();
+            redoStack = [];
+            updateUndoRedoButtons();
+        }
+        function updateUndoRedoButtons() {
+            document.getElementById('undoBtn').disabled = undoStack.length === 0;
+            document.getElementById('redoBtn').disabled = redoStack.length === 0;
+        }
+        function updateDeleteButton() {
+            document.getElementById('deleteBtn').disabled = !selectedNode;
+        }
+        function rehydrateChildren() {
+            for (const node of nodes) {
+                if (node.children && node.children.length > 0) {
+                    node.children = node.children.map(child =>
+                        nodes.find(n => n.label === child.label && n.type === child.type)
+                    ).filter(Boolean);
+                }
+            }
+        }
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push(JSON.stringify(nodes));
+                const prev = undoStack.pop();
+                nodes.length = 0;
+                for (const n of JSON.parse(prev)) nodes.push(n);
+                rehydrateChildren();
+                selectedNode = null;
+                draggingNode = null;
+                connectingNode = null;
+                updateUndoRedoButtons();
+                updateDeleteButton();
+                draw();
+            }
+        }
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push(JSON.stringify(nodes));
+                const next = redoStack.pop();
+                nodes.length = 0;
+                for (const n of JSON.parse(next)) nodes.push(n);
+                rehydrateChildren();
+                selectedNode = null;
+                draggingNode = null;
+                connectingNode = null;
+                updateUndoRedoButtons();
+                updateDeleteButton();
+                draw();
+            }
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo();
+            } else if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+            } else if (e.key === 'Delete' && selectedNode) {
+                pushUndo();
+                nodes.forEach(n => {
+                    if (n.children) n.children = n.children.filter(child => child !== selectedNode);
+                });
+                const idx = nodes.indexOf(selectedNode);
+                if (idx !== -1) nodes.splice(idx, 1);
+                selectedNode = null;
+                updateDeleteButton();
+                draw();
+            } else if (e.key === 'Escape') {
+                selectedNode = null;
+                connectingNode = null;
+                draw();
+            }
+        });
+
+        // Helper: get node at position
+        function getNodeAt(screenX, screenY) {
+            const world = screenToWorld(screenX, screenY);
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const node = nodes[i];
+                if (
+                    world.x >= node.x - nodeWidth/2 &&
+                    world.x <= node.x + nodeWidth/2 &&
+                    world.y >= node.y - nodeHeight/2 &&
+                    world.y <= node.y + nodeHeight/2
+                ) {
+                    return node;
+                }
+            }
+            return null;
+        }
+
+        // Add node on click (only if not clicking on a node)
+        canvas.addEventListener('click', (e) => {
+            const world = screenToWorld(e.clientX, e.clientY);
+            const node = getNodeAt(e.clientX, e.clientY);
+            if (connectingNode && node && connectingNode !== node) {
+                pushUndo();
+                if (!connectingNode.children) connectingNode.children = [];
+                connectingNode.children.push(node);
+                connectingNode = null;
+                draw();
+                return;
+            }
+            if (node) {
+                selectedNode = node;
+                updateDeleteButton();
+                draw();
+                return;
+            }
+        });
+
+        // Node dragging
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && !e.altKey) { // Left click without Alt
+                const node = getNodeAt(e.clientX, e.clientY);
+                if (node) {
+                    selectedNode = node;  // Store the actual node object
+                    draggingNode = node;
+                    const world = screenToWorld(e.clientX, e.clientY);
+                    dragOffsetX = world.x - node.x;
+                    dragOffsetY = world.y - node.y;
+                    pushUndo();
+                } else {
+                    selectedNode = null;
+                }
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouseScreenX = e.clientX;
+            mouseScreenY = e.clientY;
+            const world = screenToWorld(e.clientX, e.clientY);
+            hoveredNode = getNodeAt(e.clientX, e.clientY);
+            
+            // Update coordinate display
+            updateCoordinateDisplay(e.clientX, e.clientY);
+            
+            if (draggingNode) {
+                const newX = world.x - dragOffsetX;
+                const newY = world.y - dragOffsetY;
+                
+                if (!isOverlapping(newX, newY, draggingNode)) {
+                    draggingNode.x = newX;
+                    draggingNode.y = newY;
+                } else {
+                    const step = 5;
+                    const directions = [
+                        {dx: step, dy: 0}, {dx: -step, dy: 0},
+                        {dx: 0, dy: step}, {dx: 0, dy: -step},
+                        {dx: step, dy: step}, {dx: -step, dy: -step},
+                        {dx: step, dy: -step}, {dx: -step, dy: step}
+                    ];
+                    
+                    for (const dir of directions) {
+                        const testX = newX + dir.dx;
+                        const testY = newY + dir.dy;
+                        if (!isOverlapping(testX, testY, draggingNode)) {
+                            draggingNode.x = testX;
+                            draggingNode.y = testY;
+                            break;
+                        }
+                    }
+                }
+                draw();
+            } else if (connectingNode) {
+                draw();
+            } else {
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            draggingNode = null;
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const node = getNodeAt(mouseX, mouseY);
+            if (node) {
+                const newLabel = prompt('Edit name:', node.label);
+                if (newLabel) {
+                    pushUndo();
+                    node.label = newLabel;
+                    draw();
+                }
+            }
+        });
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const node = getNodeAt(mouseX, mouseY);
+            if (node) {
+                pushUndo();
+                nodes.forEach(n => {
+                    if (n.children) n.children = n.children.filter(child => child !== node);
+                });
+                const idx = nodes.indexOf(node);
+                if (idx !== -1) nodes.splice(idx, 1);
+                draw();
+            }
+        });
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.shiftKey) {
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                const node = getNodeAt(mouseX, mouseY);
+                if (node) {
+                    connectingNode = node;
+                    draw();
+                }
+            }
+        });
+
+        function drawNode(node) {
+            const w = nodeWidth, h = nodeHeight, r = 32;
+            ctx.save();
+            ctx.font = '600 26px Inter, Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Outline (pill shape)
+            ctx.beginPath();
+            ctx.strokeStyle = node.color;
+            ctx.lineWidth = (node === selectedNode) ? 6 : (node === hoveredNode) ? 5 : 4;
+            ctx.moveTo(node.x - w/2 + r, node.y - h/2);
+            ctx.lineTo(node.x + w/2 - r, node.y - h/2);
+            ctx.arcTo(node.x + w/2, node.y - h/2, node.x + w/2, node.y + h/2, r);
+            ctx.lineTo(node.x + w/2, node.y + h/2 - r);
+            ctx.arcTo(node.x + w/2, node.y + h/2, node.x - w/2, node.y + h/2, r);
+            ctx.lineTo(node.x - w/2 + r, node.y + h/2);
+            ctx.arcTo(node.x - w/2, node.y + h/2, node.x - w/2, node.y - h/2, r);
+            ctx.lineTo(node.x - w/2, node.y - h/2 + r);
+            ctx.arcTo(node.x - w/2, node.y - h/2, node.x + w/2, node.y - h/2, r);
+            ctx.stroke();
+            // Text
+            ctx.fillStyle = '#fff';
+            ctx.fillText(node.label, node.x, node.y);
+            // Status badge (optional)
+            if (node.status === 'error') {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(node.x + w/2 - 24, node.y - h/2 + 24, 18, 0, 2 * Math.PI);
+                ctx.fillStyle = node.color;
+                ctx.shadowColor = node.color;
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 22px Inter, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('!', node.x + w/2 - 24, node.y - h/2 + 24);
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        function drawConnection(from, to, color) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 8]);
+            // Start/end points
+            const dx = to.x - from.x, dy = to.y - from.y;
+            const angle = Math.atan2(dy, dx);
+            const fromX = from.x + Math.cos(angle) * (nodeWidth/2 - 10);
+            const fromY = from.y + Math.sin(angle) * (nodeHeight/2 - 10);
+            const toX = to.x - Math.cos(angle) * (nodeWidth/2 - 10);
+            const toY = to.y - Math.sin(angle) * (nodeHeight/2 - 10);
+            // Line
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // Dots at endpoints
+            ctx.beginPath();
+            ctx.arc(fromX, fromY, 7, 0, 2 * Math.PI);
+            ctx.arc(toX, toY, 7, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 6;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        // Initialize canvas and draw initial state
+        function init() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        // Call init when the page loads
+        window.addEventListener('load', init);
+        
+        // Also call init when the window is resized
+        window.addEventListener('resize', init);
+
+        // Draw dotted grid
+        function drawDottedGrid() {
+            const gridSize = 50; // Size of grid cells
+            const dotRadius = 1; // Size of dots
+            
+            // Calculate grid boundaries
+            const startX = Math.floor(-offsetX / scale / gridSize) * gridSize;
+            const startY = Math.floor(-offsetY / scale / gridSize) * gridSize;
+            const endX = startX + (canvas.width / scale) + gridSize;
+            const endY = startY + (canvas.height / scale) + gridSize;
+            
+            // Draw dots
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // White dots with 20% opacity
+            for (let x = startX; x < endX; x += gridSize) {
+                for (let y = startY; y < endY; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Save the current context state
+            ctx.save();
+            
+            // Apply transformations
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            
+            // Draw dotted grid
+            drawDottedGrid();
+            
+            // Draw connections
+            for (const node of nodes) {
+                if (node.children) {
+                    for (const child of node.children) {
+                        drawConnection(node, child, node.color);
+                    }
+                }
+            }
+            
+            // Draw relationship preview
+            if (connectingNode) {
+                const worldMouse = screenToWorld(mouseScreenX, mouseScreenY);
+                ctx.save();
+                ctx.strokeStyle = connectingNode.color;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([8, 8]);
+                const fromX = connectingNode.x + nodeWidth/2 - 10;
+                const fromY = connectingNode.y;
+                ctx.beginPath();
+                ctx.moveTo(fromX, fromY);
+                ctx.lineTo(worldMouse.x, worldMouse.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.arc(fromX, fromY, 7, 0, 2 * Math.PI);
+                ctx.arc(worldMouse.x, worldMouse.y, 7, 0, 2 * Math.PI);
+                ctx.fillStyle = connectingNode.color;
+                ctx.shadowColor = connectingNode.color;
+                ctx.shadowBlur = 6;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+            
+            // Draw nodes
+            for (const node of nodes) drawNode(node);
+            
+            // Restore the context state
+            ctx.restore();
+            
+            // Draw minimap
+            drawMinimap();
+        }
+
+        // Minimap
+        const minimapCanvas = document.createElement('canvas');
+        minimapCanvas.width = 200;
+        minimapCanvas.height = 200;
+        minimapCanvas.style.position = 'fixed';
+        minimapCanvas.style.bottom = '20px';
+        minimapCanvas.style.left = '20px';
+        minimapCanvas.style.background = '#181f2a';
+        minimapCanvas.style.border = '2px solid #232b3a';
+        minimapCanvas.style.borderRadius = '8px';
+        minimapCanvas.style.zIndex = 1000;
+        minimapCanvas.style.boxShadow = '0 0 24px 6px #3ec6ff, 0 0 0 2px #232b3a'; // Glow effect
+        document.body.appendChild(minimapCanvas);
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        function drawMinimap() {
+            minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            // Draw nodes
+            for (const node of nodes) {
+                minimapCtx.beginPath();
+                const x = node.x / canvas.width * minimapCanvas.width;
+                const y = node.y / canvas.height * minimapCanvas.height;
+                minimapCtx.arc(x, y, 8, 0, 2 * Math.PI);
+                minimapCtx.fillStyle = node.color;
+                minimapCtx.fill();
+                minimapCtx.strokeStyle = '#fff';
+                minimapCtx.lineWidth = 1;
+                minimapCtx.stroke();
+            }
+            // Draw connections
+            for (const node of nodes) {
+                if (node.children) {
+                    for (const child of node.children) {
+                        minimapCtx.save();
+                        minimapCtx.strokeStyle = node.color;
+                        minimapCtx.lineWidth = 2;
+                        minimapCtx.beginPath();
+                        const x1 = node.x / canvas.width * minimapCanvas.width;
+                        const y1 = node.y / canvas.height * minimapCanvas.height;
+                        const x2 = child.x / canvas.width * minimapCanvas.width;
+                        const y2 = child.y / canvas.height * minimapCanvas.height;
+                        minimapCtx.moveTo(x1, y1);
+                        minimapCtx.lineTo(x2, y2);
+                        minimapCtx.stroke();
+                        minimapCtx.restore();
+                    }
+                }
+            }
+        }
+
+        // Update coordinate display
+        function updateCoordinateDisplay(x, y) {
+            const world = screenToWorld(x, y);
+            document.getElementById('coordX').textContent = Math.round(world.x);
+            document.getElementById('coordY').textContent = Math.round(world.y);
+            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+        }
+
+        // Update zoom functions to update coordinate display
+        function zoomIn() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const worldBefore = screenToWorld(centerX, centerY);
+            scale *= 1.1;
+            scale = Math.min(5, scale);
+            const worldAfter = screenToWorld(centerX, centerY);
+            offsetX += (worldAfter.x - worldBefore.x) * scale;
+            offsetY += (worldAfter.y - worldBefore.y) * scale;
+            updateCoordinateDisplay(mouseScreenX, mouseScreenY);
+            draw();
+        }
+
+        function zoomOut() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const worldBefore = screenToWorld(centerX, centerY);
+            scale *= 0.9;
+            scale = Math.max(0.1, scale);
+            const worldAfter = screenToWorld(centerX, centerY);
+            offsetX += (worldAfter.x - worldBefore.x) * scale;
+            offsetY += (worldAfter.y - worldBefore.y) * scale;
+            updateCoordinateDisplay(mouseScreenX, mouseScreenY);
+            draw();
+        }
+
+        function resetZoom() {
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+            updateCoordinateDisplay(mouseScreenX, mouseScreenY);
+            draw();
+        }
+
+        // Add button event listeners
+        document.getElementById('zoomIn').addEventListener('click', zoomIn);
+        document.getElementById('zoomOut').addEventListener('click', zoomOut);
+        document.getElementById('resetZoom').addEventListener('click', resetZoom);
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'z':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+                        break;
+                    case 'y':
+                        e.preventDefault();
+                        redo();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportAsJPG();
+                        break;
+                    case 'p':
+                        e.preventDefault();
+                        exportAsPDF();
+                        break;
+                    case 'o':
+                        e.preventDefault();
+                        document.getElementById('loadTree').click();
+                        break;
+                }
+            }
+        });
+
+        // Update export functionality
+        function exportAsImage(type) {
+            try {
+                // Create a temporary canvas with the current view
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Calculate the bounds of all nodes
+                let minX = Infinity, minY = Infinity;
+                let maxX = -Infinity, maxY = -Infinity;
+                
+                nodes.forEach(node => {
+                    minX = Math.min(minX, node.x - nodeWidth/2);
+                    minY = Math.min(minY, node.y - nodeHeight/2);
+                    maxX = Math.max(maxX, node.x + nodeWidth/2);
+                    maxY = Math.max(maxY, node.y + nodeHeight/2);
+                });
+                
+                // Add padding and ensure minimum dimensions
+                const padding = 100;
+                minX -= padding;
+                minY -= padding;
+                maxX += padding;
+                maxY += padding;
+                
+                const width = Math.max(maxX - minX, 800);
+                const height = Math.max(maxY - minY, 600);
+                
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                
+                // Draw background and grid
+                tempCtx.fillStyle = '#181f2a';
+                tempCtx.fillRect(0, 0, width, height);
+                
+                // Draw grid
+                const gridSize = 32;
+                tempCtx.strokeStyle = '#232b3a';
+                tempCtx.lineWidth = 1;
+                
+                for (let x = 0; x < width; x += gridSize) {
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(x, 0);
+                    tempCtx.lineTo(x, height);
+                    tempCtx.stroke();
+                }
+                
+                for (let y = 0; y < height; y += gridSize) {
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(0, y);
+                    tempCtx.lineTo(width, y);
+                    tempCtx.stroke();
+                }
+                
+                // Draw connections and nodes
+                nodes.forEach(node => {
+                    if (node.children) {
+                        node.children.forEach(child => {
+                            const fromX = node.x - minX;
+                            const fromY = node.y - minY;
+                            const toX = child.x - minX;
+                            const toY = child.y - minY;
+                            
+                            tempCtx.save();
+                            tempCtx.strokeStyle = node.color;
+                            tempCtx.lineWidth = 3;
+                            tempCtx.setLineDash([8, 8]);
+                            
+                            const dx = toX - fromX;
+                            const dy = toY - fromY;
+                            const angle = Math.atan2(dy, dx);
+                            
+                            const fromX2 = fromX + Math.cos(angle) * (nodeWidth/2 - 10);
+                            const fromY2 = fromY + Math.sin(angle) * (nodeHeight/2 - 10);
+                            const toX2 = toX - Math.cos(angle) * (nodeWidth/2 - 10);
+                            const toY2 = toY - Math.sin(angle) * (nodeHeight/2 - 10);
+                            
+                            tempCtx.beginPath();
+                            tempCtx.moveTo(fromX2, fromY2);
+                            tempCtx.lineTo(toX2, toY2);
+                            tempCtx.stroke();
+                            
+                            tempCtx.setLineDash([]);
+                            tempCtx.beginPath();
+                            tempCtx.arc(fromX2, fromY2, 7, 0, 2 * Math.PI);
+                            tempCtx.arc(toX2, toY2, 7, 0, 2 * Math.PI);
+                            tempCtx.fillStyle = node.color;
+                            tempCtx.fill();
+                            
+                            tempCtx.restore();
+                        });
+                    }
+                });
+                
+                // Draw nodes
+                nodes.forEach(node => {
+                    const x = node.x - minX;
+                    const y = node.y - minY;
+                    
+                    tempCtx.save();
+                    tempCtx.font = '600 26px Inter, Arial, sans-serif';
+                    tempCtx.textAlign = 'center';
+                    tempCtx.textBaseline = 'middle';
+                    
+                    // Outline
+                    tempCtx.beginPath();
+                    tempCtx.strokeStyle = node.color;
+                    tempCtx.lineWidth = 4;
+                    const w = nodeWidth, h = nodeHeight, r = 32;
+                    
+                    tempCtx.moveTo(x - w/2 + r, y - h/2);
+                    tempCtx.lineTo(x + w/2 - r, y - h/2);
+                    tempCtx.arcTo(x + w/2, y - h/2, x + w/2, y + h/2, r);
+                    tempCtx.lineTo(x + w/2, y + h/2 - r);
+                    tempCtx.arcTo(x + w/2, y + h/2, x - w/2, y + h/2, r);
+                    tempCtx.lineTo(x - w/2 + r, y + h/2);
+                    tempCtx.arcTo(x - w/2, y + h/2, x - w/2, y - h/2, r);
+                    tempCtx.lineTo(x - w/2, y - h/2 + r);
+                    tempCtx.arcTo(x - w/2, y - h/2, x + w/2, y - h/2, r);
+                    tempCtx.stroke();
+                    
+                    // Text
+                    tempCtx.fillStyle = '#fff';
+                    tempCtx.fillText(node.label, x, y);
+                    
+                    tempCtx.restore();
+                });
+                
+                if (type === 'pdf') {
+                    const pdf = new jsPDF({
+                        orientation: width > height ? 'landscape' : 'portrait',
+                        unit: 'px',
+                        format: [width, height]
+                    });
+                    
+                    pdf.addImage(tempCanvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, width, height);
+                    pdf.save('family-tree.pdf');
+                } else {
+                    tempCanvas.toBlob(blob => {
+                        if (blob) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'family-tree.jpg';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }
+                    }, 'image/jpeg', 1.0);
+                }
+            } catch (error) {
+                alert('Error exporting file: ' + error.message);
+            }
+        }
+
+        function saveTree() {
+            try {
+                const data = JSON.stringify(nodes, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'family-tree.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Error saving file: ' + error.message);
+            }
+        }
+
+        function loadTree() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                        // Existing JSON loading logic...
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            try {
+                                const data = JSON.parse(event.target.result);
+                                if (!Array.isArray(data)) {
+                                    throw new Error('Invalid file format: data must be an array');
+                                }
+                                // Validate each node
+                                data.forEach((node, index) => {
+                                    if (!node.label || typeof node.label !== 'string') {
+                                        throw new Error(`Invalid node at index ${index}: missing or invalid label`);
+                                    }
+                                    if (typeof node.x !== 'number' || typeof node.y !== 'number') {
+                                        throw new Error(`Invalid node at index ${index}: missing or invalid coordinates`);
+                                    }
+                                    if (!node.type || !['Male', 'Female', 'Other'].includes(node.type)) {
+                                        throw new Error(`Invalid node at index ${index}: missing or invalid type`);
+                                    }
+                                    if (!node.color || typeof node.color !== 'string') {
+                                        throw new Error(`Invalid node at index ${index}: missing or invalid color`);
+                                    }
+                                });
+                                nodes.length = 0;
+                                for (const n of data) nodes.push(n);
+                                updateUndoRedoButtons();
+                                draw();
+                            } catch (error) {
+                                alert('Error loading file: ' + error.message);
+                            }
+                        };
+                        reader.onerror = () => {
+                            alert('Error reading file');
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        alert('Unsupported file type');
+                    }
+                }
+            };
+            input.click();
+        }
+
+        // Update event listeners for the new menu structure
+        document.getElementById('undoBtn').addEventListener('click', undo);
+        document.getElementById('redoBtn').addEventListener('click', redo);
+        document.getElementById('deleteBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (selectedNode) {
+                pushUndo();
+                nodes = nodes.filter(node => node !== selectedNode);
+                selectedNode = null;
+                draw();
+            } else {
+                alert('Please select a node to delete');
+            }
+        });
+        document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+        document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+        document.getElementById('resetViewBtn').addEventListener('click', resetZoom);
+        document.getElementById('exportJSON').addEventListener('click', saveTree);
+        document.getElementById('exportPDF').addEventListener('click', () => {
+            exportAsImage('pdf');
+        });
+        document.getElementById('exportJPG').addEventListener('click', () => {
+            exportAsImage('jpg');
+        });
+        document.getElementById('loadTree').addEventListener('click', loadTree);
+        document.getElementById('createNodeBtn').addEventListener('click', () => {
+            const label = prompt('Enter name for this family member:', 'Name');
+            if (!label) return;
+            let type = prompt('Enter type: Male, Female, or Other', 'Male');
+            type = type ? type.trim() : 'Other';
+            if (!['Male','Female','Other'].includes(type)) type = 'Other';
+            const color = NODE_TYPES.find(t => t.type === type).color;
+            pushUndo();
+            // Calculate the center of the current view
+            const centerX = (canvas.width / 2 - offsetX) / scale;
+            const centerY = (canvas.height / 2 - offsetY) / scale;
+            let newX = centerX;
+            let newY = centerY;
+            // Check for overlap and adjust position if necessary
+            while (isOverlapping(newX, newY)) {
+                newX += 50; // Adjust X position
+                newY += 50; // Adjust Y position
+            }
+            nodes.push({ x: newX, y: newY, label, type, color, children: [] });
+            draw();
+        });
+
+        // Context menu
+        const contextMenu = document.getElementById('contextMenu');
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const node = getNodeAt(e.clientX, e.clientY);
+            if (node) {
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = e.clientX + 'px';
+                contextMenu.style.top = e.clientY + 'px';
+                selectedNode = nodes.indexOf(node);
+            }
+        });
+
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
