@@ -299,9 +299,64 @@
         #minimap, #minimapCanvas, #viewportIndicator {
             display: none;
         }
+
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 30px 8px rgba(0, 123, 255, 0.35), 0 0 8px 2px rgba(147, 0, 255, 0.18);
+            z-index: 1000;
+            text-align: center;
+            transition: box-shadow 0.5s cubic-bezier(.4,2,.6,1), transform 0.4s cubic-bezier(.4,2,.6,1);
+            animation: popup-glow 2s ease-in-out infinite alternate, popup-in 0.5s cubic-bezier(.4,2,.6,1);
+        }
+        @keyframes popup-glow {
+            from {
+                box-shadow: 0 0 30px 8px rgba(0, 123, 255, 0.35), 0 0 8px 2px rgba(147, 0, 255, 0.18);
+            }
+            to {
+                box-shadow: 0 0 50px 16px rgba(0, 123, 255, 0.55), 0 0 16px 4px rgba(147, 0, 255, 0.28);
+            }
+        }
+        @keyframes popup-in {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.7);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.95);
+            }
+        }
+        .popup:hover {
+            box-shadow: 0 0 60px 20px rgba(0, 123, 255, 0.7), 0 0 24px 8px rgba(147, 0, 255, 0.35);
+            transform: translate(-50%, -50%) scale(1.02);
+        }
+        .popup button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .popup button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
+    <div id="popup" class="popup" style="display: none;">
+        <p>Use desktop or laptop for better compatibility</p>
+        <p id="timer">30</p>
+        <button id="okButton" disabled>OK</button>
+    </div>
     <div class="menu-bar">
         <div class="menu-group">
             <div class="menu-dropdown">
@@ -1350,6 +1405,28 @@
 
         document.addEventListener('click', () => {
             contextMenu.style.display = 'none';
+        });
+
+        window.addEventListener('load', function() {
+            const popup = document.getElementById('popup');
+            const timerElement = document.getElementById('timer');
+            const okButton = document.getElementById('okButton');
+            let timeLeft = 30;
+
+            popup.style.display = 'block';
+
+            const countdown = setInterval(function() {
+                timeLeft--;
+                timerElement.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    okButton.disabled = false;
+                }
+            }, 1000);
+
+            okButton.addEventListener('click', function() {
+                popup.style.display = 'none';
+            });
         });
     </script>
 </body>
