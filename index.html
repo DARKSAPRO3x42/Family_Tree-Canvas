@@ -282,14 +282,7 @@
             errorMessage.classList.remove('show');
 
             setTimeout(() => {
-                if (username === 'admin' && password === 'admin') {
-                    window.location.href = 'file:///C:/Users/tejas/OneDrive/Desktop/infinity/infinity.html';
-                } else {
-                    errorMessage.textContent = 'Invalid username or password.';
-                    errorMessage.classList.add('show');
-                    button.disabled = false;
-                    button.textContent = 'Login';
-                }
+                window.location.href = 'infinity.html';
             }, 1000);
         });
 
