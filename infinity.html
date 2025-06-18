@@ -300,63 +300,91 @@
             display: none;
         }
 
-        .popup {
-            position: fixed;
-            top: 50%;
+        .node {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #232b3a, #181f2a);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            cursor: move;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .node-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            z-index: 1;
+        }
+
+        .node-image-upload {
+            position: absolute;
+            bottom: -30px;
             left: 50%;
-            transform: translate(-50%, -50%) scale(0.95);
-            background-color: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 0 30px 8px rgba(0, 123, 255, 0.35), 0 0 8px 2px rgba(147, 0, 255, 0.18);
-            z-index: 1000;
-            text-align: center;
-            transition: box-shadow 0.5s cubic-bezier(.4,2,.6,1), transform 0.4s cubic-bezier(.4,2,.6,1);
-            animation: popup-glow 2s ease-in-out infinite alternate, popup-in 0.5s cubic-bezier(.4,2,.6,1);
-        }
-        @keyframes popup-glow {
-            from {
-                box-shadow: 0 0 30px 8px rgba(0, 123, 255, 0.35), 0 0 8px 2px rgba(147, 0, 255, 0.18);
-            }
-            to {
-                box-shadow: 0 0 50px 16px rgba(0, 123, 255, 0.55), 0 0 16px 4px rgba(147, 0, 255, 0.28);
-            }
-        }
-        @keyframes popup-in {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.7);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(0.95);
-            }
-        }
-        .popup:hover {
-            box-shadow: 0 0 60px 20px rgba(0, 123, 255, 0.7), 0 0 24px 8px rgba(147, 0, 255, 0.35);
-            transform: translate(-50%, -50%) scale(1.02);
-        }
-        .popup button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            background-color: #007BFF;
-            color: white;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #3ec6ff, #2ee59d);
             border: none;
-            border-radius: 4px;
+            color: #000;
+            padding: 6px 12px;
+            border-radius: 6px;
             cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
         }
-        .popup button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
+
+        .node:hover .node-image-upload {
+            opacity: 1;
+            pointer-events: auto;
+            bottom: -35px;
+        }
+
+        .node-image-upload:hover {
+            background: linear-gradient(135deg, #2ee59d, #3ec6ff);
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .node-image-upload:active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .node-image-preview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border-radius: 8px;
+            z-index: 0;
+        }
+
+        .node-image-preview.show {
+            opacity: 1;
         }
     </style>
 </head>
 <body>
-    <div id="popup" class="popup" style="display: none;">
-        <p>Use desktop or laptop for better compatibility</p>
-        <p id="timer">30</p>
-        <button id="okButton" disabled>OK</button>
-    </div>
     <div class="menu-bar">
         <div class="menu-group">
             <div class="menu-dropdown">
@@ -680,66 +708,27 @@
             }
         });
 
-        // Helper: get node at position
-        function getNodeAt(screenX, screenY) {
-            const world = screenToWorld(screenX, screenY);
-            for (let i = nodes.length - 1; i >= 0; i--) {
-                const node = nodes[i];
-                if (
-                    world.x >= node.x - nodeWidth/2 &&
-                    world.x <= node.x + nodeWidth/2 &&
-                    world.y >= node.y - nodeHeight/2 &&
-                    world.y <= node.y + nodeHeight/2
-                ) {
-                    return node;
-                }
-            }
-            return null;
-        }
-
-        // Add node on click (only if not clicking on a node)
-        canvas.addEventListener('click', (e) => {
-            const world = screenToWorld(e.clientX, e.clientY);
-            const node = getNodeAt(e.clientX, e.clientY);
-            if (connectingNode && node && connectingNode !== node) {
-                pushUndo();
-                if (!connectingNode.children) connectingNode.children = [];
-                connectingNode.children.push(node);
-                connectingNode = null;
-                draw();
-                return;
-            }
-            if (node) {
-                selectedNode = node;
-                updateDeleteButton();
-                draw();
-                return;
-            }
-        });
-
-        // Node dragging
-        canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && !e.altKey) { // Left click without Alt
-                const node = getNodeAt(e.clientX, e.clientY);
-                if (node) {
-                    selectedNode = node;  // Store the actual node object
-                    draggingNode = node;
-                    const world = screenToWorld(e.clientX, e.clientY);
-                    dragOffsetX = world.x - node.x;
-                    dragOffsetY = world.y - node.y;
-                    pushUndo();
-                } else {
-                    selectedNode = null;
-                }
-                draw();
-            }
-        });
-
+        // Update mouse move handler to handle image upload button clicks
         canvas.addEventListener('mousemove', (e) => {
             mouseScreenX = e.clientX;
             mouseScreenY = e.clientY;
             const world = screenToWorld(e.clientX, e.clientY);
-            hoveredNode = getNodeAt(e.clientX, e.clientY);
+            
+            // Check if we're currently hovering over a node's upload button
+            let isOverUploadButton = false;
+            if (hoveredNode && hoveredNode.uploadButton) {
+                isOverUploadButton = (
+                    world.y >= hoveredNode.uploadButton.y &&
+                    world.y <= hoveredNode.uploadButton.y + hoveredNode.uploadButton.height &&
+                    world.x >= hoveredNode.uploadButton.x &&
+                    world.x <= hoveredNode.uploadButton.x + hoveredNode.uploadButton.width
+                );
+            }
+            
+            // Only update hoveredNode if we're not over an upload button
+            if (!isOverUploadButton) {
+                hoveredNode = getNodeAt(e.clientX, e.clientY);
+            }
             
             // Update coordinate display
             updateCoordinateDisplay(e.clientX, e.clientY);
@@ -778,57 +767,91 @@
             }
         });
 
-        canvas.addEventListener('mouseup', () => {
-            draggingNode = null;
-        });
+        // Update getNodeAt function to be more precise
+        function getNodeAt(screenX, screenY) {
+            const world = screenToWorld(screenX, screenY);
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const node = nodes[i];
+                // Check if point is within node bounds
+                const isInNode = (
+                    world.x >= node.x - nodeWidth/2 &&
+                    world.x <= node.x + nodeWidth/2 &&
+                    world.y >= node.y - nodeHeight/2 &&
+                    world.y <= node.y + nodeHeight/2
+                );
+                
+                // Check if point is within upload button bounds
+                const buttonY = node.y + nodeHeight/2 + 5;
+                const buttonWidth = 80; // Minimum width
+                const buttonHeight = 25;
+                const isInButton = (
+                    world.y >= buttonY &&
+                    world.y <= buttonY + buttonHeight &&
+                    world.x >= node.x - buttonWidth/2 &&
+                    world.x <= node.x + buttonWidth/2
+                );
+                
+                if (isInNode || isInButton) {
+                    return node;
+                }
+            }
+            return null;
+        }
 
-        canvas.addEventListener('dblclick', (e) => {
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-            const node = getNodeAt(mouseX, mouseY);
-            if (node) {
-                const newLabel = prompt('Edit name:', node.label);
-                if (newLabel) {
-                    pushUndo();
-                    node.label = newLabel;
-                    draw();
+        // Update click handler to handle image upload button clicks
+        canvas.addEventListener('click', (e) => {
+            const world = screenToWorld(e.clientX, e.clientY);
+            const node = getNodeAt(e.clientX, e.clientY);
+            
+            // Check if click is on upload button area
+            if (node && node.uploadButton) {
+                if (world.y >= node.uploadButton.y &&
+                    world.y <= node.uploadButton.y + node.uploadButton.height &&
+                    world.x >= node.uploadButton.x &&
+                    world.x <= node.uploadButton.x + node.uploadButton.width) {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = function(e) {
+                        const file = e.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                if (!node.image) node.image = {};
+                                node.image.src = e.target.result;
+                                draw();
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    };
+                    input.click();
+                    return;
                 }
             }
-        });
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-            const node = getNodeAt(mouseX, mouseY);
-            if (node) {
+
+            if (connectingNode && node && connectingNode !== node) {
                 pushUndo();
-                nodes.forEach(n => {
-                    if (n.children) n.children = n.children.filter(child => child !== node);
-                });
-                const idx = nodes.indexOf(node);
-                if (idx !== -1) nodes.splice(idx, 1);
+                if (!connectingNode.children) connectingNode.children = [];
+                connectingNode.children.push(node);
+                connectingNode = null;
                 draw();
+                return;
             }
-        });
-        canvas.addEventListener('mousedown', (e) => {
-            if (e.shiftKey) {
-                const mouseX = e.clientX;
-                const mouseY = e.clientY;
-                const node = getNodeAt(mouseX, mouseY);
-                if (node) {
-                    connectingNode = node;
-                    draw();
-                }
+            if (node) {
+                selectedNode = node;
+                updateDeleteButton();
+                draw();
+                return;
             }
         });
 
         function drawNode(node) {
             const w = nodeWidth, h = nodeHeight, r = 32;
+            const imageWidth = Math.min(80, w * 0.4); // Dynamic image width, max 80px or 40% of node width
+            const textWidth = w - imageWidth - 20; // Width for text section with padding
             ctx.save();
-            ctx.font = '600 26px Inter, Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            // Outline (pill shape)
+            
+            // Draw node background
             ctx.beginPath();
             ctx.strokeStyle = node.color;
             ctx.lineWidth = (node === selectedNode) ? 6 : (node === hoveredNode) ? 5 : 4;
@@ -842,26 +865,155 @@
             ctx.lineTo(node.x - w/2, node.y - h/2 + r);
             ctx.arcTo(node.x - w/2, node.y - h/2, node.x + w/2, node.y - h/2, r);
             ctx.stroke();
-            // Text
-            ctx.fillStyle = '#fff';
-            ctx.fillText(node.label, node.x, node.y);
-            // Status badge (optional)
-            if (node.status === 'error') {
+
+            // Draw node image if exists
+            if (node.image && node.image.src) {
+                const img = new Image();
+                img.src = node.image.src;
+                
+                // Calculate image dimensions maintaining aspect ratio
+                const imageX = node.x + w/2 - imageWidth;
+                const imageY = node.y - h/2;
+                const imagePadding = 8; // Padding around the image
+                const maxImageHeight = h - (imagePadding * 2);
+                
+                // Calculate aspect ratio
+                const aspectRatio = img.width / img.height;
+                let displayWidth = imageWidth - (imagePadding * 2);
+                let displayHeight = displayWidth / aspectRatio;
+                
+                // Adjust if height exceeds maximum
+                if (displayHeight > maxImageHeight) {
+                    displayHeight = maxImageHeight;
+                    displayWidth = displayHeight * aspectRatio;
+                }
+                
+                // Center the image in its container
+                const imageCenterX = imageX + (imageWidth / 2);
+                const imageCenterY = node.y;
+                const drawX = imageCenterX - (displayWidth / 2);
+                const drawY = imageCenterY - (displayHeight / 2);
+                
                 ctx.save();
+                
+                // Create circular mask
+                const radius = Math.min(displayWidth, displayHeight) / 2;
                 ctx.beginPath();
-                ctx.arc(node.x + w/2 - 24, node.y - h/2 + 24, 18, 0, 2 * Math.PI);
-                ctx.fillStyle = node.color;
-                ctx.shadowColor = node.color;
-                ctx.shadowBlur = 8;
+                ctx.arc(imageCenterX, imageCenterY, radius, 0, Math.PI * 2);
+                ctx.clip();
+                
+                // Draw image with proper aspect ratio
+                ctx.drawImage(img, drawX, drawY, displayWidth, displayHeight);
+                
+                // Add subtle border around the circular image
+                ctx.beginPath();
+                ctx.arc(imageCenterX, imageCenterY, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.restore();
+
+                // Draw separator line with gradient
+                const gradient = ctx.createLinearGradient(imageX, imageY, imageX, imageY + h);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.2)');
+                gradient.addColorStop(0.8, 'rgba(255, 255, 255, 0.2)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                ctx.beginPath();
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 1;
+                ctx.moveTo(imageX, imageY + 10);
+                ctx.lineTo(imageX, imageY + h - 10);
+                ctx.stroke();
+            }
+
+            // Draw text with dynamic alignment
+            ctx.fillStyle = '#fff';
+            const textX = node.x - (imageWidth/2);
+            const textY = node.y;
+            
+            // Set up text properties
+            ctx.font = '600 26px Inter, Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Measure text width
+            const textMetrics = ctx.measureText(node.label);
+            const textPadding = 10; // Padding on each side
+            
+            // Check if text needs to be scaled down
+            if (textMetrics.width > textWidth - (textPadding * 2)) {
+                // Calculate scale factor
+                const scale = (textWidth - (textPadding * 2)) / textMetrics.width;
+                const newFontSize = Math.floor(26 * scale);
+                
+                // Update font size
+                ctx.font = `600 ${newFontSize}px Inter, Arial, sans-serif`;
+            }
+            
+            // Draw text with shadow for better visibility
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText(node.label, textX, textY);
+            
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+
+            // Draw upload button when hovering
+            if (node === hoveredNode) {
+                const buttonY = node.y + h/2 + 5;
+                const buttonText = '📷 Upload';
+                ctx.save();
+                
+                // Calculate button width based on text
+                ctx.font = '600 12px Inter, Arial, sans-serif';
+                const textMetrics = ctx.measureText(buttonText);
+                const buttonWidth = Math.max(textMetrics.width + 20, 80); // Minimum width of 80px
+                const buttonHeight = 25;
+                
+                // Draw button background with gradient
+                const gradient = ctx.createLinearGradient(
+                    node.x - buttonWidth/2, buttonY,
+                    node.x + buttonWidth/2, buttonY + buttonHeight
+                );
+                gradient.addColorStop(0, 'rgba(62, 198, 255, 0.9)');
+                gradient.addColorStop(1, 'rgba(46, 229, 157, 0.9)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.roundRect(node.x - buttonWidth/2, buttonY, buttonWidth, buttonHeight, 6);
                 ctx.fill();
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 22px Inter, Arial, sans-serif';
+                
+                // Add subtle shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetY = 2;
+                
+                // Draw button text
+                ctx.fillStyle = '#000';
+                ctx.font = '600 12px Inter, Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('!', node.x + w/2 - 24, node.y - h/2 + 24);
+                ctx.fillText(buttonText, node.x, buttonY + buttonHeight/2);
+                
                 ctx.restore();
+                
+                // Store button dimensions for click detection
+                node.uploadButton = {
+                    x: node.x - buttonWidth/2,
+                    y: buttonY,
+                    width: buttonWidth,
+                    height: buttonHeight
+                };
+            } else {
+                node.uploadButton = null;
             }
+
             ctx.restore();
         }
 
@@ -1213,22 +1365,18 @@
                     }
                 });
                 
-                // Draw nodes
+                // Draw nodes with all their elements
                 nodes.forEach(node => {
                     const x = node.x - minX;
                     const y = node.y - minY;
                     
                     tempCtx.save();
-                    tempCtx.font = '600 26px Inter, Arial, sans-serif';
-                    tempCtx.textAlign = 'center';
-                    tempCtx.textBaseline = 'middle';
                     
-                    // Outline
+                    // Draw node background
+                    const w = nodeWidth, h = nodeHeight, r = 32;
                     tempCtx.beginPath();
                     tempCtx.strokeStyle = node.color;
                     tempCtx.lineWidth = 4;
-                    const w = nodeWidth, h = nodeHeight, r = 32;
-                    
                     tempCtx.moveTo(x - w/2 + r, y - h/2);
                     tempCtx.lineTo(x + w/2 - r, y - h/2);
                     tempCtx.arcTo(x + w/2, y - h/2, x + w/2, y + h/2, r);
@@ -1240,9 +1388,83 @@
                     tempCtx.arcTo(x - w/2, y - h/2, x + w/2, y - h/2, r);
                     tempCtx.stroke();
                     
-                    // Text
+                    // Draw node image if exists
+                    if (node.image && node.image.src) {
+                        const img = new Image();
+                        img.src = node.image.src;
+                        
+                        const imageWidth = Math.min(80, w * 0.4);
+                        const imageX = x + w/2 - imageWidth;
+                        const imageY = y - h/2;
+                        const imagePadding = 8;
+                        const maxImageHeight = h - (imagePadding * 2);
+                        
+                        const aspectRatio = img.width / img.height;
+                        let displayWidth = imageWidth - (imagePadding * 2);
+                        let displayHeight = displayWidth / aspectRatio;
+                        
+                        if (displayHeight > maxImageHeight) {
+                            displayHeight = maxImageHeight;
+                            displayWidth = displayHeight * aspectRatio;
+                        }
+                        
+                        const imageCenterX = imageX + (imageWidth / 2);
+                        const imageCenterY = y;
+                        const drawX = imageCenterX - (displayWidth / 2);
+                        const drawY = imageCenterY - (displayHeight / 2);
+                        
+                        tempCtx.save();
+                        const radius = Math.min(displayWidth, displayHeight) / 2;
+                        tempCtx.beginPath();
+                        tempCtx.arc(imageCenterX, imageCenterY, radius, 0, Math.PI * 2);
+                        tempCtx.clip();
+                        tempCtx.drawImage(img, drawX, drawY, displayWidth, displayHeight);
+                        
+                        tempCtx.beginPath();
+                        tempCtx.arc(imageCenterX, imageCenterY, radius, 0, Math.PI * 2);
+                        tempCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                        tempCtx.lineWidth = 2;
+                        tempCtx.stroke();
+                        tempCtx.restore();
+                        
+                        // Draw separator line
+                        const gradient = tempCtx.createLinearGradient(imageX, imageY, imageX, imageY + h);
+                        gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                        gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.2)');
+                        gradient.addColorStop(0.8, 'rgba(255, 255, 255, 0.2)');
+                        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                        
+                        tempCtx.beginPath();
+                        tempCtx.strokeStyle = gradient;
+                        tempCtx.lineWidth = 1;
+                        tempCtx.moveTo(imageX, imageY + 10);
+                        tempCtx.lineTo(imageX, imageY + h - 10);
+                        tempCtx.stroke();
+                    }
+                    
+                    // Draw text
+                    const textWidth = w - Math.min(80, w * 0.4) - 20;
                     tempCtx.fillStyle = '#fff';
-                    tempCtx.fillText(node.label, x, y);
+                    const textX = x - (Math.min(80, w * 0.4)/2);
+                    const textY = y;
+                    
+                    tempCtx.font = '600 26px Inter, Arial, sans-serif';
+                    tempCtx.textAlign = 'center';
+                    tempCtx.textBaseline = 'middle';
+                    
+                    const textMetrics = tempCtx.measureText(node.label);
+                    const textPadding = 10;
+                    
+                    if (textMetrics.width > textWidth - (textPadding * 2)) {
+                        const scale = (textWidth - (textPadding * 2)) / textMetrics.width;
+                        const newFontSize = Math.floor(26 * scale);
+                        tempCtx.font = `600 ${newFontSize}px Inter, Arial, sans-serif`;
+                    }
+                    
+                    tempCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    tempCtx.shadowBlur = 4;
+                    tempCtx.shadowOffsetY = 2;
+                    tempCtx.fillText(node.label, textX, textY);
                     
                     tempCtx.restore();
                 });
@@ -1257,6 +1479,7 @@
                     pdf.addImage(tempCanvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, width, height);
                     pdf.save('family-tree.pdf');
                 } else {
+                    // For JPG export, ensure high quality
                     tempCanvas.toBlob(blob => {
                         if (blob) {
                             const url = URL.createObjectURL(blob);
@@ -1268,7 +1491,7 @@
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
                         }
-                    }, 'image/jpeg', 1.0);
+                    }, 'image/jpeg', 1.0); // Maximum quality
                 }
             } catch (error) {
                 alert('Error exporting file: ' + error.message);
@@ -1407,26 +1630,174 @@
             contextMenu.style.display = 'none';
         });
 
-        window.addEventListener('load', function() {
-            const popup = document.getElementById('popup');
-            const timerElement = document.getElementById('timer');
-            const okButton = document.getElementById('okButton');
-            let timeLeft = 30;
-
-            popup.style.display = 'block';
-
-            const countdown = setInterval(function() {
-                timeLeft--;
-                timerElement.textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(countdown);
-                    okButton.disabled = false;
+        function createNode(x, y) {
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            
+            const nodeContent = document.createElement('div');
+            nodeContent.className = 'node-content';
+            
+            // Add image upload button
+            const imageUpload = document.createElement('button');
+            imageUpload.className = 'node-image-upload';
+            imageUpload.innerHTML = '<span class="icon">📷</span> Upload Image';
+            
+            // Add image preview container
+            const imagePreview = document.createElement('img');
+            imagePreview.className = 'node-image-preview';
+            
+            // Add file input
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            
+            // Handle image upload
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        imagePreview.classList.add('show');
+                    };
+                    reader.readAsDataURL(file);
                 }
-            }, 1000);
-
-            okButton.addEventListener('click', function() {
-                popup.style.display = 'none';
             });
+            
+            // Connect button to file input
+            imageUpload.addEventListener('click', () => fileInput.click());
+            
+            node.appendChild(imagePreview);
+            node.appendChild(nodeContent);
+            node.appendChild(fileInput);
+            node.appendChild(imageUpload);
+            
+            return node;
+        }
+
+        // Helper: check if a point is inside a node
+        function isPointInNode(x, y, node) {
+            return (
+                x >= node.x - nodeWidth/2 &&
+                x <= node.x + nodeWidth/2 &&
+                y >= node.y - nodeHeight/2 &&
+                y <= node.y + nodeHeight/2
+            );
+        }
+
+        canvas.addEventListener('click', function(e) {
+            const mousePos = screenToWorld(e.clientX, e.clientY);
+            for (const node of nodes) {
+                if (isPointInNode(mousePos.x, mousePos.y, node)) {
+                    // Check if click is on upload button
+                    const buttonX = node.x + nodeWidth/2 - 30;  // Adjusted button position
+                    const buttonY = node.y + nodeHeight/2 + 5;  // Adjusted button position
+                    const buttonWidth = 60;  // Button width
+                    const buttonHeight = 25;  // Button height
+                    
+                    if (mousePos.x >= buttonX && 
+                        mousePos.x <= buttonX + buttonWidth &&
+                        mousePos.y >= buttonY && 
+                        mousePos.y <= buttonY + buttonHeight) {
+                        
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = function(e) {
+                            const file = e.target.files[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = function(e) {
+                                    if (!node.image) node.image = {};
+                                    node.image.src = e.target.result;
+                                    draw();
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        };
+                        input.click();
+                    }
+                }
+            }
+        });
+
+        // Node dragging
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && !e.altKey) { // Left click without Alt
+                const world = screenToWorld(e.clientX, e.clientY);
+                const node = getNodeAt(e.clientX, e.clientY);
+                
+                if (node) {
+                    // Check if click is on upload button
+                    const buttonY = node.y + nodeHeight/2 + 5;
+                    if (world.y >= buttonY && world.y <= buttonY + 25 &&
+                        world.x >= node.x - 30 && world.x <= node.x + 30) {
+                        // Don't start dragging if clicking upload button
+                        return;
+                    }
+                    
+                    selectedNode = node;
+                    draggingNode = node;
+                    dragOffsetX = world.x - node.x;
+                    dragOffsetY = world.y - node.y;
+                    pushUndo();
+                } else {
+                    selectedNode = null;
+                }
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            draggingNode = null;
+        });
+
+        // Restore double-click for editing
+        canvas.addEventListener('dblclick', (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const node = getNodeAt(mouseX, mouseY);
+            if (node) {
+                const newLabel = prompt('Edit name:', node.label);
+                if (newLabel) {
+                    pushUndo();
+                    node.label = newLabel;
+                    draw();
+                }
+            }
+        });
+
+        // Restore context menu
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const node = getNodeAt(mouseX, mouseY);
+            if (node) {
+                pushUndo();
+                nodes.forEach(n => {
+                    if (n.children) n.children = n.children.filter(child => child !== node);
+                });
+                const idx = nodes.indexOf(node);
+                if (idx !== -1) nodes.splice(idx, 1);
+                draw();
+            }
+        });
+
+        // Restore shift+click for connecting nodes
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.shiftKey) {
+                const mouseX = e.clientX;
+                const mouseY = e.clientY;
+                const node = getNodeAt(mouseX, mouseY);
+                if (node) {
+                    connectingNode = node;
+                    draw();
+                }
+            }
         });
     </script>
 </body>
